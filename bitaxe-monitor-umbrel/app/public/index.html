@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bitaxe Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #0a0c0f;
+      --bg2:    #111418;
+      --bg3:    #181d24;
+      --border: rgba(255,149,0,0.15);
+      --orange: #ff9500;
+      --orange-dim: rgba(255,149,0,0.10);
+      --green:  #39d98a;
+      --green-dim: rgba(57,217,138,0.10);
+      --red:    #ff453a;
+      --red-dim: rgba(255,69,58,0.10);
+      --blue:   #64d2ff;
+      --blue-dim: rgba(100,210,255,0.10);
+      --muted:  #4a5568;
+      --text:   #e2e8f0;
+      --mono:   'Share Tech Mono', monospace;
+      --sans:   'Rajdhani', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    /* ── HEADER ─────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .logo-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--orange);
+      box-shadow: 0 0 10px var(--orange);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .app-title  { font-family: var(--mono); font-size: 16px; color: var(--orange); letter-spacing: 3px; }
+    .app-sub    { font-size: 11px; color: var(--muted); letter-spacing: 1px; margin-top: 2px; }
+
+    .status-pill {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--mono); font-size: 11px;
+      padding: 5px 12px; border-radius: 20px; border: 1px solid;
+      transition: all .3s;
+    }
+    .status-pill.waiting    { color: var(--muted);  border-color: var(--muted);  background: transparent; }
+    .status-pill.connecting { color: var(--orange); border-color: rgba(255,149,0,.3); background: var(--orange-dim); }
+    .status-pill.online     { color: var(--green);  border-color: rgba(57,217,138,.3); background: var(--green-dim); }
+    .status-pill.error      { color: var(--red);    border-color: rgba(255,69,58,.3);  background: var(--red-dim); }
+    .sdot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    /* ── CONFIG BAR ─────────────────────────── */
+    .config-bar {
+      display: flex; gap: 8px; align-items: center;
+      padding: 12px 24px;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+    }
+    .config-bar label { font-size: 11px; color: var(--muted); font-family: var(--mono); letter-spacing: 1px; white-space: nowrap; }
+    .config-bar input {
+      flex: 1; max-width: 260px;
+      background: var(--bg2); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--mono); font-size: 13px;
+      padding: 7px 12px; border-radius: 6px; outline: none;
+      transition: border-color .2s;
+    }
+    .config-bar input:focus { border-color: var(--orange); }
+    .btn {
+      font-family: var(--sans); font-weight: 700; font-size: 13px;
+      letter-spacing: 1px; padding: 7px 16px; border-radius: 6px;
+      border: none; cursor: pointer; transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: var(--orange); color: #000; }
+    .btn-secondary { background: var(--bg2); color: var(--orange); border: 1px solid var(--border); }
+    .btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,69,58,.3); }
+
+    .interval-wrap { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .interval-wrap label { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+    .interval-wrap select {
+      background: var(--bg2); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--mono); font-size: 12px;
+      padding: 6px 8px; border-radius: 6px; outline: none;
+    }
+
+    /* ── MAIN GRID ──────────────────────────── */
+    .shell { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
+
+    .error-banner {
+      display: none;
+      background: var(--red-dim); border: 1px solid rgba(255,69,58,.3);
+      border-radius: 8px; padding: 10px 16px;
+      font-family: var(--mono); font-size: 12px; color: var(--red);
+      margin-bottom: 16px;
+    }
+
+    .row { display: grid; gap: 12px; margin-bottom: 12px; }
+    .row-4 { grid-template-columns: repeat(4, 1fr); }
+    .row-2 { grid-template-columns: 1fr 1fr; }
+    .row-3 { grid-template-columns: 2fr 1fr 1fr; }
+
+    /* ── CARDS ──────────────────────────────── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::after {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--card-accent, var(--orange));
+      opacity: .65;
+    }
+
+    .clabel {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+      color: var(--muted); text-transform: uppercase; margin-bottom: 10px;
+    }
+    .cval {
+      font-family: var(--mono); font-size: 28px; line-height: 1;
+      color: var(--card-accent, var(--orange));
+    }
+    .cunit { font-size: 13px; color: var(--muted); margin-left: 3px; }
+    .csub  { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+    /* Temp bar */
+    .tbar-wrap { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+    .tbar { height: 100%; border-radius: 2px; transition: width .5s, background .5s; }
+
+    /* Sparkline */
+    .spark { display: flex; align-items: flex-end; gap: 2px; height: 36px; margin-top: 10px; }
+    .sbar  { flex: 1; background: var(--orange); opacity: .5; border-radius: 2px 2px 0 0; min-height: 2px; transition: height .3s; }
+
+    /* Share row */
+    .share-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+    .share-item { text-align: center; }
+    .share-num  { font-family: var(--mono); font-size: 22px; }
+    .share-lbl  { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 1px; margin-top: 2px; }
+
+    /* Pool info table */
+    .info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 0; border-bottom: 1px solid rgba(255,149,0,.08);
+      font-size: 13px;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .ikey { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1.5px; }
+    .ival { font-family: var(--mono); font-size: 12px; color: var(--text); word-break: break-all; text-align: right; max-width: 60%; }
+
+    /* Latency history mini-chart */
+    .lat-history { display: flex; align-items: flex-end; gap: 3px; height: 40px; margin-top: 10px; }
+    .lat-bar { flex: 1; border-radius: 2px 2px 0 0; min-height: 2px; transition: height .3s, background .3s; }
+
+    /* Footer */
+    .footer {
+      text-align: center; font-family: var(--mono); font-size: 10px;
+      color: var(--muted); padding: 16px; letter-spacing: 1px;
+    }
+
+    @media (max-width: 700px) {
+      .row-4 { grid-template-columns: repeat(2, 1fr); }
+      .row-3 { grid-template-columns: 1fr; }
+      .share-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+      .row-2 { grid-template-columns: 1fr; }
+      .config-bar { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo-dot"></div>
+    <div>
+      <div class="app-title">BITAXE // MONITOR</div>
+      <div class="app-sub">UMBREL · OPEN SOURCE MINING DASHBOARD</div>
+    </div>
+  </div>
+  <div class="status-pill waiting" id="pill">
+    <div class="sdot"></div><span id="pill-text">NOT CONNECTED</span>
+  </div>
+</div>
+
+<!-- CONFIG BAR -->
+<div class="config-bar">
+  <label>BITAXE IP</label>
+  <input id="ip-input" type="text" placeholder="192.168.1.x" autocomplete="off" spellcheck="false"/>
+  <button class="btn btn-primary" onclick="connectMiner()">CONNECT</button>
+  <button class="btn btn-secondary" onclick="loadDemo()">DEMO</button>
+  <button class="btn btn-danger" id="stop-btn" onclick="stopPolling()" style="display:none">STOP</button>
+  <div class="interval-wrap">
+    <label>POLL</label>
+    <select id="interval-sel" onchange="updateInterval()">
+      <option value="5000">5s</option>
+      <option value="10000" selected>10s</option>
+      <option value="30000">30s</option>
+      <option value="60000">60s</option>
+    </select>
+  </div>
+</div>
+
+<!-- SHELL -->
+<div class="shell">
+  <div class="error-banner" id="err"></div>
+
+  <!-- ROW 1: hashrate / temp / latency / efficiency -->
+  <div class="row row-4">
+    <div class="card" style="--card-accent: var(--orange)">
+      <div class="clabel">HASHRATE</div>
+      <div class="cval" id="v-hash">—<span class="cunit">GH/s</span></div>
+      <div class="spark" id="spark-hash"></div>
+    </div>
+
+    <div class="card" style="--card-accent: var(--red)">
+      <div class="clabel">CHIP TEMP</div>
+      <div class="cval" id="v-temp">—<span class="cunit">°C</span></div>
+      <div class="tbar-wrap"><div class="tbar" id="tbar" style="width:0%"></div></div>
+      <div class="csub" id="v-temp-sub">— / 85°C max</div>
+    </div>
+
+    <div class="card" style="--card-accent: var(--blue)">
+      <div class="clabel">POOL LATENCY</div>
+      <div class="cval" id="v-lat">—<span class="cunit">ms</span></div>
+      <div class="lat-history" id="lat-hist"></div>
+    </div>
+
+    <div class="card" style="--card-accent: var(--green)">
+      <div class="clabel">EFFICIENCY</div>
+      <div class="cval" id="v-eff">—<span class="cunit">J/TH</span></div>
+      <div class="csub" id="v-power">— W</div>
+    </div>
+  </div>
+
+  <!-- ROW 2: shares / pool info -->
+  <div class="row row-2">
+    <div class="card" style="--card-accent: var(--green)">
+      <div class="clabel">SHARE STATS</div>
+      <div class="share-grid">
+        <div class="share-item">
+          <div class="share-num" style="color:var(--green)" id="v-acc">—</div>
+          <div class="share-lbl">ACCEPTED</div>
+        </div>
+        <div class="share-item">
+          <div class="share-num" style="color:var(--red)" id="v-rej">—</div>
+          <div class="share-lbl">REJECTED</div>
+        </div>
+        <div class="share-item">
+          <div class="share-num" style="color:var(--orange)" id="v-stale">—</div>
+          <div class="share-lbl">STALE</div>
+        </div>
+        <div class="share-item">
+          <div class="share-num" style="color:var(--blue)" id="v-rate">—</div>
+          <div class="share-lbl">ACC RATE</div>
+        </div>
+      </div>
+      <div class="csub" id="v-shares-sub" style="margin-top:12px">Waiting for data...</div>
+    </div>
+
+    <div class="card" style="--card-accent: var(--blue)">
+      <div class="clabel">SYSTEM INFO</div>
+      <div class="info-row"><span class="ikey">POOL</span><span class="ival" id="i-pool">—</span></div>
+      <div class="info-row"><span class="ikey">UPTIME</span><span class="ival" id="i-uptime">—</span></div>
+      <div class="info-row"><span class="ikey">BEST DIFF</span><span class="ival" id="i-diff">—</span></div>
+      <div class="info-row"><span class="ikey">FREQUENCY</span><span class="ival" id="i-freq">—</span></div>
+      <div class="info-row"><span class="ikey">HOSTNAME</span><span class="ival" id="i-host">—</span></div>
+      <div class="info-row"><span class="ikey">FIRMWARE</span><span class="ival" id="i-fw">—</span></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer" id="footer">NOT CONNECTED · ENTER BITAXE LAN IP ABOVE</div>
+
+<script>
+  // ── State ────────────────────────────────────────────────────────────────
+  let pollTimer = null;
+  let hashHist  = [];
+  let latHist   = [];
+  let demoTick  = 0;
+  let demoTimer = null;
+  let isDemo    = false;
+
+  // ── Status pill ──────────────────────────────────────────────────────────
+  function setStatus(state, text) {
+    const p = document.getElementById('pill');
+    p.className = 'status-pill ' + state;
+    document.getElementById('pill-text').textContent = text;
+  }
+
+  // ── Error banner ─────────────────────────────────────────────────────────
+  function showErr(msg) {
+    const e = document.getElementById('err');
+    e.textContent = msg;
+    e.style.display = 'block';
+  }
+  function clearErr() {
+    document.getElementById('err').style.display = 'none';
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function fmtUptime(s) {
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+    return d > 0 ? `${d}d ${h}h ${m}m` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
+
+  function renderSpark(id, history, color) {
+    const el = document.getElementById(id);
+    const max = Math.max(...history, 1);
+    el.innerHTML = '';
+    history.slice(-24).forEach(v => {
+      const b = document.createElement('div');
+      b.className = 'sbar';
+      b.style.height = Math.max(3, (v / max) * 36) + 'px';
+      if (color) b.style.background = color;
+      el.appendChild(b);
+    });
+  }
+
+  function renderLatHist(history) {
+    const el = document.getElementById('lat-hist');
+    const max = Math.max(...history, 1);
+    el.innerHTML = '';
+    history.slice(-20).forEach(v => {
+      const b = document.createElement('div');
+      b.className = 'lat-bar';
+      b.style.height = Math.max(3, (v / max) * 40) + 'px';
+      b.style.background = v > 150 ? 'var(--red)' : v > 80 ? 'var(--orange)' : 'var(--blue)';
+      el.appendChild(b);
+    });
+  }
+
+  // ── Update UI from data ──────────────────────────────────────────────────
+  function updateUI(d) {
+    clearErr();
+    setStatus('online', 'ONLINE');
+
+    // Hashrate
+    const hr = ((d.hashRate || 0) / 1000).toFixed(2);
+    document.getElementById('v-hash').innerHTML = hr + '<span class="cunit">GH/s</span>';
+    hashHist.push(parseFloat(hr));
+    if (hashHist.length > 60) hashHist.shift();
+    renderSpark('spark-hash', hashHist, 'var(--orange)');
+
+    // Temp
+    const temp = d.temp || d.chipTemp || 0;
+    document.getElementById('v-temp').innerHTML = temp.toFixed(1) + '<span class="cunit">°C</span>';
+    const pct = Math.min(100, (temp / 85) * 100);
+    const tb  = document.getElementById('tbar');
+    tb.style.width = pct + '%';
+    tb.style.background = temp > 75 ? 'var(--red)' : temp > 62 ? 'var(--orange)' : 'var(--green)';
+    document.getElementById('v-temp-sub').textContent = `${temp.toFixed(1)} / 85°C max`;
+
+    // Power / efficiency
+    const pwr = d.power || 0;
+    const thRate = (d.hashRate || 0) / 1e6;
+    const eff = thRate > 0 ? (pwr / thRate).toFixed(0) : '—';
+    document.getElementById('v-eff').innerHTML = eff + '<span class="cunit">J/TH</span>';
+    document.getElementById('v-power').textContent = pwr.toFixed(1) + ' W draw';
+
+    // Shares
+    const acc   = d.sharesAccepted || 0;
+    const rej   = d.sharesRejected || 0;
+    const stale = d.sharesStale    || 0;
+    const total = acc + rej;
+    const rate  = total > 0 ? ((acc / total) * 100).toFixed(1) + '%' : '—';
+    document.getElementById('v-acc').textContent   = acc.toLocaleString();
+    document.getElementById('v-rej').textContent   = rej.toLocaleString();
+    document.getElementById('v-stale').textContent = stale.toLocaleString();
+    document.getElementById('v-rate').textContent  = rate;
+    document.getElementById('v-shares-sub').textContent =
+      `${total.toLocaleString()} total · ${rej} rejected · ${stale} stale`;
+
+    // System info
+    const pool = (d.stratumURL || '').replace('stratum+tcp://', '') || '—';
+    document.getElementById('i-pool').textContent   = pool;
+    document.getElementById('i-uptime').textContent = fmtUptime(d.uptimeSeconds || 0);
+    document.getElementById('i-diff').textContent   = d.bestDiff || d.bestNonceDiff || '—';
+    document.getElementById('i-freq').textContent   = (d.frequency || '—') + ' MHz';
+    document.getElementById('i-host').textContent   = d.hostname || '—';
+    document.getElementById('i-fw').textContent     = d.version  || '—';
+
+    // Trigger latency ping (pool host, measured from the Umbrel server)
+    const hostMatch = (d.stratumURL || 'parasite.wtf:42069').match(/stratum\+tcp:\/\/([^:]+)/);
+    pingPool(hostMatch ? hostMatch[1] : 'parasite.wtf');
+
+    document.getElementById('footer').textContent =
+      `LAST UPDATE ${new Date().toLocaleTimeString()}` + (isDemo ? ' · DEMO MODE' : '');
+  }
+
+  // ── Latency ping via server proxy ────────────────────────────────────────
+  async function pingPool(host) {
+    try {
+      const res = await fetch(`/proxy/ping?host=${encodeURIComponent(host)}`);
+      const j = await res.json();
+      const ms = j.ms;
+      latHist.push(ms);
+      if (latHist.length > 20) latHist.shift();
+      const avg = Math.round(latHist.reduce((a, b) => a + b, 0) / latHist.length);
+      const el = document.getElementById('v-lat');
+      el.innerHTML = avg + '<span class="cunit">ms</span>';
+      el.style.color = avg > 150 ? 'var(--red)' : avg > 80 ? 'var(--orange)' : 'var(--blue)';
+      document.getElementById('footer').textContent +=
+        ` · POOL ${host} avg ${avg}ms`;
+      renderLatHist(latHist);
+    } catch (_) {}
+  }
+
+  // ── Fetch miner data via server proxy ────────────────────────────────────
+  async function fetchMiner(ip) {
+    setStatus('connecting', 'POLLING...');
+    try {
+      const res = await fetch(`/proxy/miner?ip=${encodeURIComponent(ip)}`);
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      updateUI(data);
+    } catch (e) {
+      setStatus('error', 'ERROR');
+      showErr(`Cannot reach Bitaxe at ${ip} — ${e.message}`);
+    }
+  }
+
+  // ── Connect / stop ───────────────────────────────────────────────────────
+  function getInterval() { return parseInt(document.getElementById('interval-sel').value); }
+
+  function connectMiner() {
+    isDemo = false;
+    stopPolling();
+    const ip = document.getElementById('ip-input').value.trim();
+    if (!ip) { showErr('Enter your Bitaxe LAN IP address first.'); return; }
+    clearErr();
+    document.getElementById('stop-btn').style.display = '';
+    fetchMiner(ip);
+    pollTimer = setInterval(() => fetchMiner(ip), getInterval());
+  }
+
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
+    document.getElementById('stop-btn').style.display = 'none';
+    setStatus('waiting', 'NOT CONNECTED');
+  }
+
+  function updateInterval() {
+    const ip = document.getElementById('ip-input').value.trim();
+    if (!pollTimer || !ip) return;
+    clearInterval(pollTimer);
+    pollTimer = setInterval(() => fetchMiner(ip), getInterval());
+  }
+
+  // ── Demo mode ────────────────────────────────────────────────────────────
+  function loadDemo() {
+    isDemo = true;
+    stopPolling();
+    clearErr();
+    document.getElementById('stop-btn').style.display = '';
+    demoTick = 0;
+
+    function tick() {
+      demoTick++;
+      const hr = 450 + Math.sin(demoTick * 0.25) * 35 + (Math.random() - 0.5) * 20;
+      updateUI({
+        hashRate:        hr * 1000,
+        temp:            62 + Math.sin(demoTick * 0.18) * 4 + Math.random() * 1.5,
+        power:           14.4 + Math.random() * 0.6,
+        sharesAccepted:  1300 + demoTick * 3,
+        sharesRejected:  4,
+        sharesStale:     1,
+        stratumURL:      'stratum+tcp://parasite.wtf:42069',
+        uptimeSeconds:   86400 * 2 + demoTick * 10,
+        bestDiff:        '4.29K',
+        frequency:       485,
+        hostname:        'bitaxe-demo',
+        version:         'v2.3.1-demo',
+      });
+    }
+    tick();
+    demoTimer = setInterval(tick, 3000);
+  }
+
+  // ── Keyboard shortcut: Enter to connect ──────────────────────────────────
+  document.getElementById('ip-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') connectMiner();
+  });
+</script>
+</body>
+</html>
