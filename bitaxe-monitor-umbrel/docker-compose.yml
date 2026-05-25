@@ -1,0 +1,29 @@
+version: "3.7"
+
+services:
+  app:
+    image: node:18-alpine
+    container_name: bitaxe-monitor
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ${APP_DATA_DIR}/app:/app
+    ports:
+      - ${APP_PORT:-8855}:8855
+    environment:
+      - NODE_ENV=production
+      - PORT=8855
+    command: >
+      sh -c "
+        if [ ! -f package.json ]; then
+          npm init -y &&
+          npm install express http-proxy-middleware node-fetch@2;
+        fi &&
+        node server.js
+      "
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge

@@ -1,0 +1,29 @@
+manifestVersion: 1
+id: bitaxe-monitor
+name: Bitaxe Monitor
+tagline: Real-time dashboard for your Bitaxe miner
+icon: https://raw.githubusercontent.com/YOUR_USERNAME/bitaxe-monitor-umbrel/master/bitaxe-monitor/umbrel-app-icon.png
+category: bitcoin
+version: "1.0.0"
+port: 8855
+description: >-
+  A real-time monitoring dashboard for Bitaxe open-source Bitcoin miners.
+  Tracks hashrate, chip temperature, power efficiency, share stats (accepted /
+  rejected / stale), and pool latency — all from your Umbrel node.
+
+  Configure your Bitaxe's local IP in the app and it will poll the Bitaxe
+  REST API every 10 seconds, displaying live data in a dark mining-themed UI.
+
+  Works with any Bitaxe running the standard AxeOS firmware.
+developer: YOUR_NAME
+website: https://github.com/YOUR_USERNAME/bitaxe-monitor-umbrel
+dependencies: []
+repo: https://github.com/YOUR_USERNAME/bitaxe-monitor-umbrel
+support: https://github.com/YOUR_USERNAME/bitaxe-monitor-umbrel/issues
+gallery:
+  - https://raw.githubusercontent.com/YOUR_USERNAME/bitaxe-monitor-umbrel/master/bitaxe-monitor/gallery/1.png
+releaseNotes: >-
+  Initial release. Polls Bitaxe /api/system/info, displays hashrate sparkline,
+  chip temp bar, efficiency, share breakdown, pool latency, and uptime.
+submitter: YOUR_NAME
+submission: https://github.com/YOUR_USERNAME/bitaxe-monitor-umbrel
